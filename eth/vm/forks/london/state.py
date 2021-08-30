@@ -86,6 +86,21 @@ class LondonTransactionExecutor(BerlinTransactionExecutor):
         )
         return message
 
+    def finalize_computation(self,
+                             transaction: SignedTransactionAPI,
+                             computation: ComputationAPI) -> ComputationAPI:
+
+        computation = super().finalize_computation(transaction, computation)
+
+        # In the Frontier fork, finalize_computation adds a refund for SELF_DESTRUCT.
+        # EIP-3529 removes that refund, so the logic is reversed here
+        num_deletions = len(computation.get_accounts_for_deletion())
+        if num_deletions:
+            computation.consume_gas(REFUND_SELFDESTRUCT * num_deletions)
+
+        return computation
+
+
 
 class LondonState(BerlinState):
     account_db_class: Type[AccountDatabaseAPI] = AccountDB
